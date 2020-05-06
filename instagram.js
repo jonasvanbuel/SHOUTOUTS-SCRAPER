@@ -48,5 +48,4 @@ const instagram = {
   }
 };
 
-
 module.exports = instagram;

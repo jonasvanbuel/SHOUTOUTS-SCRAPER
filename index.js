@@ -1,14 +1,16 @@
-import Scraper from 'instagram_scraper';
-import Server from 'server_interface';
+const instagram = require('./instagram');
+const server = require('./server.js');
 
-import { fetchCurrentState } from 'server_interface';
+server.fetchState();
 
-const InitialState = []
 
-fetchCurrentState();
 
-(async () => {
-  await Scraper.initialize();
-  await Scraper.login('socialdeckone', 'socialdeck1');
-  await Scraper.getTaggedLinks('mariotestino');
-})();
+
+
+// INSTAGRAM SCRAPING
+
+// (async () => {
+//   await instagram.initialize();
+//   await instagram.login('socialdeckone', 'socialdeck1');
+//   await instagram.getTaggedLinks('mariotestino');
+// })();

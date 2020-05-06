@@ -1,7 +1,7 @@
 {
-  "name": "test-scraper-puppeteer",
+  "name": "shoutouts-scraper",
   "version": "1.0.0",
-  "description": "Test implementation of Puppeteer and Node.js for scraping of Instagram",
+  "description": "",
   "main": "index.js",
   "repository": "none",
   "author": "Jonas Vanbuel",
