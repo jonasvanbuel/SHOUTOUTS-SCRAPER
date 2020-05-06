@@ -1,0 +1,13 @@
+{
+  "name": "test-scraper-puppeteer",
+  "version": "1.0.0",
+  "description": "Test implementation of Puppeteer and Node.js for scraping of Instagram",
+  "main": "index.js",
+  "repository": "none",
+  "author": "Jonas Vanbuel",
+  "license": "yes",
+  "private": true,
+  "dependencies": {
+    "puppeteer": "^2.1.1"
+  }
+}
