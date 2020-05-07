@@ -2,7 +2,7 @@
   "name": "shoutouts-scraper",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "main.js",
   "repository": "none",
   "author": "Jonas Vanbuel",
   "license": "yes",

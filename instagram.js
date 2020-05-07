@@ -1,12 +1,23 @@
 const puppeteer = require('puppeteer');
+const fetch = require('node-fetch');
 
 const BASE_URL = 'https://www.instagram.com/';
-const SUBJECT_URL = 'https://www.instagram.com/mariotestino/tagged/';
 
 // Instagram is JS Object (JSON)
 const instagram = {
   browser: null,
   page: null,
+  serverState: [],
+
+  fetchInitialServerState: async() => {
+    const BASE_URL = 'http://localhost:3000';
+    const SUBJECT_USERNAME = 'mariotestino';
+    const endpoint = `${BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
+    serverState = await fetch(endpoint)
+      .then(response => response.json())
+      .then(data => data)
+    console.log('Initial server state received and set...');
+  },
 
   // First instagram function is `initialize`
   initialize: async () => {
@@ -19,7 +30,7 @@ const instagram = {
   login: async (username, password) => {
     await instagram.page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
-    await instagram.page.waitFor(1000);
+    await instagram.page.waitFor(3000);
 
     await instagram.page.type('input[name="username"]', username, { delay: 50 });
     await instagram.page.type('input[name="password"]', password, { delay: 50 });
@@ -29,24 +40,36 @@ const instagram = {
     await loginButton[0].click();
   },
 
-  getTaggedLinks: async (username) => {
+  gotToSubjectTaggedPage: async (subject) => {
     await instagram.page.waitForNavigation({ waitUntil: 'networkidle2' });
 
-    const subjectUrl = `https://www.instagram.com/${username}/tagged`;
+    const subjectUrl = `https://www.instagram.com/${subject}/tagged`;
     await instagram.page.goto(subjectUrl, { waitUntil: 'networkidle2' });
+    console.log('Subject tagged page loaded...');
+  },
 
-    // await instagram.page.waitFor(5000);
-    // let taggedPostsRows = await instagram.page.$x('//div[contains(@class, "Nnq7C")]');
+  getInitialLoadTaggedLinks: async () => {
+    console.log('getInitialLoadTaggedLinks() called...');
+    await instagram.page.waitFor(3000);
+    let pageLoad = 0;
+    const mostRecentServerLink = 'p/B_47eainp1_/';
 
-    // const taggedPostsUrls = [];
+    const taggedLinks = await instagram.page.evaluate(() => {
+      const taggedLinks = [];
+      const initiallyLoadedPosts = document.querySelectorAll('.v1Nh3');
+      initiallyLoadedPosts.forEach((element) => {
+        taggedLinks.push(element.firstChild.pathname);
+      })
+      return taggedLinks;
+    });
+    console.log('Initially downloaded tagged links received...');
 
-    // for(let i = 0; i < 3; i++) {
+    console.log(serverState);
 
-    //   debugger
-    //   let url = taggedPostsRows[0];
-    // }
 
   }
 };
+
+
 
 module.exports = instagram;
