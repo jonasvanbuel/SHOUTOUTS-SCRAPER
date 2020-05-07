@@ -3,6 +3,7 @@ const puppeteer = require('puppeteer');
 const BASE_URL = 'https://www.instagram.com/';
 const SUBJECT_URL = 'https://www.instagram.com/mariotestino/tagged/';
 
+// Instagram is JS Object (JSON)
 const instagram = {
   browser: null,
   page: null,
@@ -34,16 +35,16 @@ const instagram = {
     const subjectUrl = `https://www.instagram.com/${username}/tagged`;
     await instagram.page.goto(subjectUrl, { waitUntil: 'networkidle2' });
 
-    await instagram.page.waitFor(5000);
-    let taggedPostsRows = await instagram.page.$x('//div[contains(@class, "Nnq7C")]');
+    // await instagram.page.waitFor(5000);
+    // let taggedPostsRows = await instagram.page.$x('//div[contains(@class, "Nnq7C")]');
 
-    const taggedPostsUrls = [];
+    // const taggedPostsUrls = [];
 
-    for(let i = 0; i < 3; i++) {
+    // for(let i = 0; i < 3; i++) {
 
-      debugger
-      let url = taggedPostsRows[0];
-    }
+    //   debugger
+    //   let url = taggedPostsRows[0];
+    // }
 
   }
 };
