@@ -7,16 +7,38 @@ const BASE_URL = 'https://www.instagram.com/';
 const instagram = {
   browser: null,
   page: null,
-  serverState: [],
+  serverState: null,
+  mostRecentPathname: null,
 
-  fetchInitialServerState: async() => {
+  fetchInitialServerState: async () => {
     const BASE_URL = 'http://localhost:3000';
     const SUBJECT_USERNAME = 'mariotestino';
     const endpoint = `${BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
     serverState = await fetch(endpoint)
       .then(response => response.json())
       .then(data => data)
-    console.log('Initial server state received and set...');
+
+    if (serverState) {
+      console.log('Initial server state received set...');
+      return serverState;
+    }
+  },
+
+  setMostRecentPathname: async () => {
+    let mostRecentDateTime = null;
+    let mostRecentPost = null;
+
+    for (const taggedPost of serverState) {
+      if (Date.parse(taggedPost.posted_at) >= mostRecentDateTime || !mostRecentDateTime) {
+        mostRecentDateTime = Date.parse(taggedPost.posted_at);
+        mostRecentPost = taggedPost;
+      }
+    }
+
+    if (mostRecentPost.pathname) {
+      mostRecentPathname = mostRecentPost.pathname;
+      console.log('mostRecentPathname set...');
+    }
   },
 
   // First instagram function is `initialize`
@@ -30,7 +52,7 @@ const instagram = {
   login: async (username, password) => {
     await instagram.page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
-    await instagram.page.waitFor(3000);
+    await instagram.page.waitFor(1500);
 
     await instagram.page.type('input[name="username"]', username, { delay: 50 });
     await instagram.page.type('input[name="password"]', password, { delay: 50 });
@@ -48,28 +70,64 @@ const instagram = {
     console.log('Subject tagged page loaded...');
   },
 
-  getInitialLoadTaggedLinks: async () => {
-    console.log('getInitialLoadTaggedLinks() called...');
-    await instagram.page.waitFor(3000);
-    let pageLoad = 0;
-    const mostRecentServerLink = 'p/B_47eainp1_/';
-
-    const taggedLinks = await instagram.page.evaluate(() => {
-      const taggedLinks = [];
-      const initiallyLoadedPosts = document.querySelectorAll('.v1Nh3');
-      initiallyLoadedPosts.forEach((element) => {
-        taggedLinks.push(element.firstChild.pathname);
-      })
-      return taggedLinks;
-    });
-    console.log('Initially downloaded tagged links received...');
-
-    console.log(serverState);
+  getNewTaggedLinks: async () => {
+    await instagram.page.waitFor(2000);
+    // let pageLoad = 0;
+    // const mostRecentTaggedLink = '/p/B_5h2EnAkU6/';
 
 
+    // const newTaggedLinks = await instagram.page.evaluate((mostRecentPathname) => {
+    //   const newTaggedLinks = [];
+    //   const initiallyLoadedPosts = document.querySelectorAll('.v1Nh3');
+
+    //   initiallyLoadedPosts.forEach((element) => {
+    //     const pathname = element.firstChild.pathname;
+    //     if (pathname !== mostRecentPathname) {
+    //       newTaggedLinks.push(pathname);
+    //     }
+    //   })
+    //   return newTaggedLinks;
+    // });
+
+    const pagePathnames = await fetchPagePathnames();
+
+    console.log('Page pathnames received...');
+    console.log(pagePathnames);
+
+    console.log('Scrolling down...');
+    await scrollDown();
+    console.log('Scrolled down...');
+
+    // return pagePathnames;
+  },
+
+  createTaggedPost: async (pathname) => {
+    const url = `https://www.instagram.com${pathname}`;
+    await instagram.page.goto(url, { waitUntil: 'networkidle2' });
   }
 };
 
+// HELPER FUNCTIONS
+const scrollDown = async () => {
+  await instagram.page.evaluate(() => {
+    window.scrollBy(0, window.innerHeight);
+  });
+}
 
+const fetchPagePathnames = async () => {
+  const pagePathnames = await instagram.page.evaluate(() => {
+    const pathnames = [];
+    const loadedPosts = document.querySelectorAll('.v1Nh3');
+    loadedPosts.forEach((element) => {
+      console.log(element.firstChild.pathname);
+      console.log(typeof element.firstChild.pathname);
+      let pathname = element.firstChild.pathname;
+      pathnames.push(pathname);
+    })
+    return pathnames;
+  });
+  console.log(pagePathnames);
+  return pagePathnames;
+}
 
 module.exports = instagram;
