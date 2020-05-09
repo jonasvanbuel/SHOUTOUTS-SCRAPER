@@ -70,35 +70,35 @@ const instagram = {
     console.log('Subject tagged page loaded...');
   },
 
-  getNewTaggedLinks: async () => {
-    await instagram.page.waitFor(2000);
-    // let pageLoad = 0;
-    // const mostRecentTaggedLink = '/p/B_5h2EnAkU6/';
+  getNewPathnames: async () => {
+    const mostRecentPathnameProxy = '/p/B_75KCMnLrc/';
 
+    // TO DO: INSTEAD WAIT UNTIL POSTS ARE LOADED!
+    await instagram.page.waitFor(5000);
+    let pagePathnames = await fetchPagePathnames();
 
-    // const newTaggedLinks = await instagram.page.evaluate((mostRecentPathname) => {
-    //   const newTaggedLinks = [];
-    //   const initiallyLoadedPosts = document.querySelectorAll('.v1Nh3');
+    async function checkAndRefetchPathnames() {
+      if(pagePathnames.includes(mostRecentPathnameProxy)) {
+        // FILTER ONLY NEW PAGEPATHNAMES
+        pagePathnames = pagePathnames.slice(0, pagePathnames.indexOf(mostRecentPathnameProxy));
+        console.log('mostRecentPathnameProxy FOUND in current pagePathnames...');
+        console.log(`Final count: ${pagePathnames.length}`);
+      } else {
+        // SCROLL + REDO
+        console.log(`Current count: ${pagePathnames.length}`);
+        console.log('mostRecentPathnameProxy NOT found in current pagePathnames...');
+        await scrollDown();
 
-    //   initiallyLoadedPosts.forEach((element) => {
-    //     const pathname = element.firstChild.pathname;
-    //     if (pathname !== mostRecentPathname) {
-    //       newTaggedLinks.push(pathname);
-    //     }
-    //   })
-    //   return newTaggedLinks;
-    // });
+        // TO DO: INSTEAD WAIT UNTIL POSTS ARE LOADED!
+        await instagram.page.waitFor(10000);
 
-    const pagePathnames = await fetchPagePathnames();
+        pagePathnames = await fetchPagePathnames();
+        await checkAndRefetchPathnames();
+      }
+    };
 
-    console.log('Page pathnames received...');
-    console.log(pagePathnames);
-
-    console.log('Scrolling down...');
-    await scrollDown();
-    console.log('Scrolled down...');
-
-    // return pagePathnames;
+    await checkAndRefetchPathnames();
+    return pagePathnames;
   },
 
   createTaggedPost: async (pathname) => {
@@ -107,11 +107,12 @@ const instagram = {
   }
 };
 
-// HELPER FUNCTIONS
+// PRIVATE HELPER FUNCTIONS
 const scrollDown = async () => {
   await instagram.page.evaluate(() => {
     window.scrollBy(0, window.innerHeight);
   });
+  console.log('Scrolled down...');
 }
 
 const fetchPagePathnames = async () => {
@@ -119,14 +120,11 @@ const fetchPagePathnames = async () => {
     const pathnames = [];
     const loadedPosts = document.querySelectorAll('.v1Nh3');
     loadedPosts.forEach((element) => {
-      console.log(element.firstChild.pathname);
-      console.log(typeof element.firstChild.pathname);
       let pathname = element.firstChild.pathname;
       pathnames.push(pathname);
     })
     return pathnames;
   });
-  console.log(pagePathnames);
   return pagePathnames;
 }
 

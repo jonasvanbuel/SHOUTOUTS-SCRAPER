@@ -5,13 +5,14 @@ const subject = 'mariotestino';
 (async () => {
   const initialServerState = await instagram.fetchInitialServerState();
   await instagram.setMostRecentPathname();
-  // console.log(initialServerState);
 
   await instagram.initialize();
   await instagram.login('socialdeckone', 'socialdeck1');
   await instagram.gotToSubjectTaggedPage(subject);
 
-  await instagram.getNewTaggedLinks();
+  const newPathnames = await instagram.getNewPathnames();
+  console.log(newPathnames);
+
   // await instagram.createTaggedPost('/p/B_5h2EnAkU6/');
 
   // taggedLinks.forEach(taggedLink => {
