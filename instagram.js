@@ -3,12 +3,12 @@ const fetch = require('node-fetch');
 
 const BASE_URL = 'https://www.instagram.com/';
 
-// Instagram is JS Object (JSON)
 const instagram = {
   browser: null,
   page: null,
   serverState: null,
   mostRecentPathname: null,
+  newPathnames: null,
 
   fetchInitialServerState: async () => {
     const BASE_URL = 'http://localhost:3000';
@@ -41,7 +41,6 @@ const instagram = {
     }
   },
 
-  // First instagram function is `initialize`
   initialize: async () => {
     instagram.browser = await puppeteer.launch({
       headless: false
@@ -71,61 +70,65 @@ const instagram = {
   },
 
   getNewPathnames: async () => {
+    console.log('Fetching new pathnames...');
     const mostRecentPathnameProxy = '/p/B_75KCMnLrc/';
+    let loadedPathnames = [];
+    let pathnamesCollection = [];
 
-    // TO DO: INSTEAD WAIT UNTIL POSTS ARE LOADED!
-    await instagram.page.waitFor(5000);
-    let pagePathnames = await fetchPagePathnames();
+    async function fetchLoadedPathnames() {
+      await instagram.page.waitFor(5000);
+      loadedPathnames = await instagram.page.evaluate(() => {
+        const pathnames = [];
+        const loadedPosts = document.querySelectorAll('.v1Nh3');
+        loadedPosts.forEach((element) => {
+          let pathname = element.firstChild.pathname;
+          pathnames.push(pathname);
+        })
+        return pathnames;
+      });
+      await checkLoadedPathnames();
+    };
 
-    async function checkAndRefetchPathnames() {
-      if(pagePathnames.includes(mostRecentPathnameProxy)) {
-        // FILTER ONLY NEW PAGEPATHNAMES
-        pagePathnames = pagePathnames.slice(0, pagePathnames.indexOf(mostRecentPathnameProxy));
-        console.log('mostRecentPathnameProxy FOUND in current pagePathnames...');
-        console.log(`Final count: ${pagePathnames.length}`);
+    async function checkLoadedPathnames() {
+      if(loadedPathnames.includes(mostRecentPathnameProxy)) {
+        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(mostRecentPathnameProxy));
+        addLoadedPathnamesToCollection();
+
+        console.log(`Number of new pathnames: ${pathnamesCollection.length}`);
+        console.log(pathnamesCollection);
+
+        newPathnames = pathnamesCollection;
       } else {
-        // SCROLL + REDO
-        console.log(`Current count: ${pagePathnames.length}`);
-        console.log('mostRecentPathnameProxy NOT found in current pagePathnames...');
+        addLoadedPathnamesToCollection();
         await scrollDown();
-
-        // TO DO: INSTEAD WAIT UNTIL POSTS ARE LOADED!
-        await instagram.page.waitFor(10000);
-
-        pagePathnames = await fetchPagePathnames();
-        await checkAndRefetchPathnames();
+        await fetchLoadedPathnames();
       }
     };
 
-    await checkAndRefetchPathnames();
-    return pagePathnames;
+    const addLoadedPathnamesToCollection = () => {
+      pathnamesCollection = pathnamesCollection.concat(loadedPathnames)
+      pathnamesCollection = pathnamesCollection.filter((value, index, array) => {
+        return array.indexOf(value) == index;
+      });
+    }
+
+    await fetchLoadedPathnames();
   },
 
-  createTaggedPost: async (pathname) => {
+  createNewTaggedPost: async () => {
+    const pathname = '/p/B_5h2EnAkU6/';
     const url = `https://www.instagram.com${pathname}`;
     await instagram.page.goto(url, { waitUntil: 'networkidle2' });
+    console.log('post page loaded...');
   }
 };
 
 // PRIVATE HELPER FUNCTIONS
 const scrollDown = async () => {
   await instagram.page.evaluate(() => {
-    window.scrollBy(0, window.innerHeight);
+    const randomNumber = Math.random() * 3;
+    window.scrollBy(0, window.innerHeight * randomNumber);
   });
-  console.log('Scrolled down...');
-}
-
-const fetchPagePathnames = async () => {
-  const pagePathnames = await instagram.page.evaluate(() => {
-    const pathnames = [];
-    const loadedPosts = document.querySelectorAll('.v1Nh3');
-    loadedPosts.forEach((element) => {
-      let pathname = element.firstChild.pathname;
-      pathnames.push(pathname);
-    })
-    return pathnames;
-  });
-  return pagePathnames;
-}
+};
 
 module.exports = instagram;
