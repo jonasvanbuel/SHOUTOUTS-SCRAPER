@@ -11,9 +11,9 @@ const instagram = {
   newPathnames: null,
 
   fetchInitialServerState: async () => {
-    const BASE_URL = 'http://localhost:3000';
+    const API_BASE_URL = 'http://localhost:3000';
     const SUBJECT_USERNAME = 'mariotestino';
-    const endpoint = `${BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
+    const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
     serverState = await fetch(endpoint)
       .then(response => response.json())
       .then(data => data)
@@ -51,10 +51,10 @@ const instagram = {
   login: async (username, password) => {
     await instagram.page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
-    await instagram.page.waitFor(1500);
+    await instagram.page.waitFor(5000);
 
-    await instagram.page.type('input[name="username"]', username, { delay: 50 });
-    await instagram.page.type('input[name="password"]', password, { delay: 50 });
+    await instagram.page.type('input[name="username"]', username, { delay: 100 });
+    await instagram.page.type('input[name="password"]', password, { delay: 100 });
 
     // REFACTOR BELOW
     let loginButton = await instagram.page.$x('//*[@id="react-root"]/section/main/article/div[2]/div[1]/div/form/div[4]/button');
@@ -116,11 +116,43 @@ const instagram = {
   },
 
   createNewTaggedPost: async () => {
-    const pathname = '/p/B_5h2EnAkU6/';
-    const url = `https://www.instagram.com${pathname}`;
+    // const pathnameProxy = '/p/B_5h2EnAkU6/';
+    const pathnameProxy = '/p/CAIaDhkATdS/';
+    const url = `https://www.instagram.com${pathnameProxy}`;
     await instagram.page.goto(url, { waitUntil: 'networkidle2' });
-    console.log('post page loaded...');
+    await instagram.page.waitFor(3000);
+
+    const taggedPost = await instagram.page.evaluate(() => {
+      const taggedPost = {
+        instagram_account: 'mariotestino',
+        author: document.querySelector('.sqdOP').innerText,
+        message: document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'"),
+        posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
+        pathname: window.location.pathname,
+        image_url: document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0],
+        user_avatar_url: document.querySelector('._6q-tv').src,
+        likes: parseInt(document.querySelector('.Nm9Fw').firstChild.innerHTML.match(/[\d,]+/g)[0].replace(/,/g, ""))
+      };
+      return taggedPost;
+    });
+
+    const API_BASE_URL = 'http://localhost:3000';
+    const SUBJECT_USERNAME = 'mariotestino';
+    const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
+
+    fetch(endpoint, {
+        method: 'post',
+        body: JSON.stringify(taggedPost),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(response => response.json())
+      .then((data) => {
+        console.log('New tagged post created');
+        console.log(data);
+      })
   }
+
+
 };
 
 // PRIVATE HELPER FUNCTIONS
