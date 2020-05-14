@@ -10,7 +10,7 @@ const instagram = {
   mostRecentPathname: null,
   newPathnames: null,
 
-  fetchInitialServerState: async () => {
+  fetchServerState: async () => {
     const API_BASE_URL = 'http://localhost:3000';
     const SUBJECT_USERNAME = 'mariotestino';
     const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
@@ -130,7 +130,6 @@ const instagram = {
 
       // OPEN NEW WINDOW
       const page = await instagram.browser.newPage();
-      await page.waitFor(3000);
       await page.goto(postUrl, { waitUntil: 'networkidle2' });
       await page.waitFor(3000);
 
@@ -166,8 +165,40 @@ const instagram = {
       // CLOSE WINDOW
       await page.close();
     }
-  }
+  },
 
+  updateTaggedPosts: async () => {
+    serverState = await instagram.fetchServerState();
+    serverStateCopy = serverState;
+
+    for (const taggedPost of serverStateCopy) {
+      const page = await instagram.browser.newPage();
+      await page.goto(`https://www.instagram.com${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
+      await page.waitFor(3000);
+
+      const body = await page.evaluate(() => {
+        return {
+          likes: parseInt(document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, ""))
+        }
+      })
+
+      body["pathname"] = taggedPost.pathname;
+
+      const API_BASE_URL = 'http://localhost:3000';
+      const SUBJECT_USERNAME = 'mariotestino';
+      const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
+
+      fetch(endpoint, {
+          method: 'patch',
+          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then((data) => {
+          serverState = data;
+        })
+    }
+  }
 };
 
 // PRIVATE HELPER FUNCTIONS
