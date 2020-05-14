@@ -37,7 +37,7 @@ const instagram = {
 
     if (mostRecentPost.pathname) {
       mostRecentPathname = mostRecentPost.pathname;
-      console.log('mostRecentPathname set...');
+      console.log(`mostRecentPathname set: "${mostRecentPathname}"...`);
     }
   },
 
@@ -71,7 +71,10 @@ const instagram = {
 
   getNewPathnames: async () => {
     console.log('Fetching new pathnames...');
-    const mostRecentPathnameProxy = '/p/B_75KCMnLrc/';
+    if (!mostRecentPathname) {
+      console.log('mostRecentPathname not successfully set...');
+    };
+
     let loadedPathnames = [];
     let pathnamesCollection = [];
 
@@ -90,14 +93,18 @@ const instagram = {
     };
 
     async function checkLoadedPathnames() {
-      if(loadedPathnames.includes(mostRecentPathnameProxy)) {
-        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(mostRecentPathnameProxy));
+
+      // If mostRecentPathname is loaded and we reach end of scraping cycle
+      if(loadedPathnames.includes(mostRecentPathname)) {
+        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(mostRecentPathname));
         addLoadedPathnamesToCollection();
 
         console.log(`Number of new pathnames: ${pathnamesCollection.length}`);
         console.log(pathnamesCollection);
-
         newPathnames = pathnamesCollection;
+
+        await instagram.page.close();
+
       } else {
         addLoadedPathnamesToCollection();
         await scrollDown();
@@ -115,43 +122,51 @@ const instagram = {
     await fetchLoadedPathnames();
   },
 
-  createNewTaggedPost: async () => {
-    // const pathnameProxy = '/p/B_5h2EnAkU6/';
-    const pathnameProxy = '/p/CAIaDhkATdS/';
-    const url = `https://www.instagram.com${pathnameProxy}`;
-    await instagram.page.goto(url, { waitUntil: 'networkidle2' });
-    await instagram.page.waitFor(3000);
+  createNewTaggedPosts: async () => {
+    const tempNewPathnames = newPathnames.slice().reverse();
 
-    const taggedPost = await instagram.page.evaluate(() => {
-      const taggedPost = {
-        instagram_account: 'mariotestino',
-        author: document.querySelector('.sqdOP').innerText,
-        message: document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'"),
-        posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
-        pathname: window.location.pathname,
-        image_url: document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0],
-        user_avatar_url: document.querySelector('._6q-tv').src,
-        likes: parseInt(document.querySelector('.Nm9Fw').firstChild.innerHTML.match(/[\d,]+/g)[0].replace(/,/g, ""))
-      };
-      return taggedPost;
-    });
+    for (const newPathname of tempNewPathnames) {
+      const postUrl = `https://www.instagram.com${newPathname}`;
 
-    const API_BASE_URL = 'http://localhost:3000';
-    const SUBJECT_USERNAME = 'mariotestino';
-    const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
+      // OPEN NEW WINDOW
+      const page = await instagram.browser.newPage();
+      await page.waitFor(3000);
+      await page.goto(postUrl, { waitUntil: 'networkidle2' });
+      await page.waitFor(3000);
 
-    fetch(endpoint, {
-        method: 'post',
-        body: JSON.stringify(taggedPost),
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(response => response.json())
-      .then((data) => {
-        console.log('New tagged post created');
-        console.log(data);
-      })
+      const taggedPost = await page.evaluate(() => {
+        const taggedPost = {
+          // instagram_account: 'mariotestino',
+          author: document.querySelector('.sqdOP').innerText,
+          message: document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'"),
+          posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
+          pathname: window.location.pathname,
+          image_url: document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0],
+          user_avatar_url: document.querySelector('._6q-tv').src,
+          likes: parseInt(document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, ""))
+        };
+        return taggedPost;
+      });
+
+      const API_BASE_URL = 'http://localhost:3000';
+      const SUBJECT_USERNAME = 'mariotestino';
+      const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
+
+      fetch(endpoint, {
+          method: 'post',
+          body: JSON.stringify(taggedPost),
+          headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then((data) => {
+          console.log(`New tagged post created from "${newPathname}"...`);
+          serverState = data;
+        })
+
+      // CLOSE WINDOW
+      await page.close();
+    }
   }
-
 
 };
 
