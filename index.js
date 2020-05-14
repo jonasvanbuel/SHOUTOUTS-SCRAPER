@@ -1,7 +1,7 @@
 const instagram = require('./instagram');
 
 (async () => {
-  await instagram.fetchInitialServerState();
+  await instagram.fetchServerState();
   await instagram.setMostRecentPathname();
 
   await instagram.initialize();
@@ -11,5 +11,8 @@ const instagram = require('./instagram');
   await instagram.getNewPathnames();
   await instagram.createNewTaggedPosts();
 
+  // await instagram.updateTaggedPosts();
+
   await instagram.browser.close();
 })();
+

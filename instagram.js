@@ -10,7 +10,7 @@ const instagram = {
   mostRecentPathname: null,
   newPathnames: null,
 
-  fetchInitialServerState: async () => {
+  fetchServerState: async () => {
     const API_BASE_URL = 'http://localhost:3000';
     const SUBJECT_USERNAME = 'mariotestino';
     const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
@@ -123,29 +123,36 @@ const instagram = {
   },
 
   createNewTaggedPosts: async () => {
-    const tempNewPathnames = newPathnames.slice().reverse();
+    const newPathnamesCopy = newPathnames.slice().reverse();
 
-    for (const newPathname of tempNewPathnames) {
+    for (const newPathname of newPathnamesCopy) {
       const postUrl = `https://www.instagram.com${newPathname}`;
 
       // OPEN NEW WINDOW
       const page = await instagram.browser.newPage();
-      await page.waitFor(3000);
       await page.goto(postUrl, { waitUntil: 'networkidle2' });
       await page.waitFor(3000);
 
       const taggedPost = await page.evaluate(() => {
-        const taggedPost = {
-          // instagram_account: 'mariotestino',
+        const fetchLikes = () => {
+          if (document.querySelector('.Nm9Fw button span')) {
+            return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
+          }
+          if (document.querySelector('.Nm9Fw button')) {
+            return document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
+          }
+          console.log("Problem with fetching likes...");
+        }
+
+        return {
           author: document.querySelector('.sqdOP').innerText,
           message: document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'"),
           posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
           pathname: window.location.pathname,
           image_url: document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0],
           user_avatar_url: document.querySelector('._6q-tv').src,
-          likes: parseInt(document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, ""))
+          likes: parseInt(fetchLikes())
         };
-        return taggedPost;
       });
 
       const API_BASE_URL = 'http://localhost:3000';
@@ -159,15 +166,53 @@ const instagram = {
         })
         .then(response => response.json())
         .then((data) => {
-          console.log(`New tagged post created from "${newPathname}"...`);
           serverState = data;
-        })
 
-      // CLOSE WINDOW
+          // Delete this pathname from 'newPathnames' array in module state
+          const index = newPathnames.indexOf(newPathname);
+          if (index > -1) {
+            newPathnames.splice(index, 1);
+          }
+
+          console.log(`New tagged post created from "${newPathname}"...`);
+          console.log(newPathnames);
+        })
       await page.close();
     }
-  }
+  },
 
+  updateTaggedPosts: async () => {
+    serverState = await instagram.fetchServerState();
+    serverStateCopy = serverState;
+
+    for (const taggedPost of serverStateCopy) {
+      const page = await instagram.browser.newPage();
+      await page.goto(`https://www.instagram.com${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
+      await page.waitFor(3000);
+
+      const body = await page.evaluate(() => {
+        return {
+          likes: parseInt(document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, ""))
+        }
+      })
+
+      body["pathname"] = taggedPost.pathname;
+
+      const API_BASE_URL = 'http://localhost:3000';
+      const SUBJECT_USERNAME = 'mariotestino';
+      const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
+
+      fetch(endpoint, {
+          method: 'patch',
+          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then((data) => {
+          serverState = data;
+        })
+    }
+  }
 };
 
 // PRIVATE HELPER FUNCTIONS
