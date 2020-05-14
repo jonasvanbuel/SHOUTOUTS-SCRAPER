@@ -123,9 +123,9 @@ const instagram = {
   },
 
   createNewTaggedPosts: async () => {
-    const tempNewPathnames = newPathnames.slice().reverse();
+    const newPathnamesCopy = newPathnames.slice().reverse();
 
-    for (const newPathname of tempNewPathnames) {
+    for (const newPathname of newPathnamesCopy) {
       const postUrl = `https://www.instagram.com${newPathname}`;
 
       // OPEN NEW WINDOW
@@ -134,17 +134,25 @@ const instagram = {
       await page.waitFor(3000);
 
       const taggedPost = await page.evaluate(() => {
-        const taggedPost = {
-          // instagram_account: 'mariotestino',
+        const fetchLikes = () => {
+          if (document.querySelector('.Nm9Fw button span')) {
+            return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
+          }
+          if (document.querySelector('.Nm9Fw button')) {
+            return document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
+          }
+          console.log("Problem with fetching likes...");
+        }
+
+        return {
           author: document.querySelector('.sqdOP').innerText,
           message: document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'"),
           posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
           pathname: window.location.pathname,
           image_url: document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0],
           user_avatar_url: document.querySelector('._6q-tv').src,
-          likes: parseInt(document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, ""))
+          likes: parseInt(fetchLikes())
         };
-        return taggedPost;
       });
 
       const API_BASE_URL = 'http://localhost:3000';
@@ -158,11 +166,17 @@ const instagram = {
         })
         .then(response => response.json())
         .then((data) => {
-          console.log(`New tagged post created from "${newPathname}"...`);
           serverState = data;
-        })
 
-      // CLOSE WINDOW
+          // Delete this pathname from 'newPathnames' array in module state
+          const index = newPathnames.indexOf(newPathname);
+          if (index > -1) {
+            newPathnames.splice(index, 1);
+          }
+
+          console.log(`New tagged post created from "${newPathname}"...`);
+          console.log(newPathnames);
+        })
       await page.close();
     }
   },
