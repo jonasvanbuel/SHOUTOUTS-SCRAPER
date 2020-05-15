@@ -154,7 +154,7 @@ const ig = {
 
         return {
           author: document.querySelector('.sqdOP').innerText,
-          message: document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'"),
+          message: document.querySelector('.C4VMK') ? document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'") : "",
           posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
           pathname: window.location.pathname,
           image_url: document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0],
