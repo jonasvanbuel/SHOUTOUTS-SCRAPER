@@ -5,7 +5,7 @@ const ig = {
   API_BASE_URL: 'https://shoutouts-stream.herokuapp.com',
   INSTA_BASE_URL: 'https://instagram.com',
   SUBJECT: 'mariotestino',
-  DEVISE: 'MAC', //'MAC' or 'RASP'
+  DEVISE: 'RASP', //'MAC' or 'RASP'
   browser: null,
   page: null,
   serverState: null,
@@ -103,11 +103,11 @@ const ig = {
 
     async function checkLoadedPathnames() {
 
-      const mostRecentPathnameProxy = '/p/CANTfhiFO6S/';
+      // const mostRecentPathnameProxy = '/p/CANTfhiFO6S/';
 
       // If mostRecentPathname is loaded and we reach end of scraping cycle
-      if(loadedPathnames.includes(mostRecentPathnameProxy)) {
-        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(mostRecentPathnameProxy));
+      if(loadedPathnames.includes(ig.mostRecentPathname)) {
+        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(ig.mostRecentPathname));
         addLoadedPathnamesToCollection();
 
         console.log(`Number of new pathnames: ${pathnamesCollection.length}`);
