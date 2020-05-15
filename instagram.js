@@ -106,7 +106,7 @@ const ig = {
       // const mostRecentPathnameProxy = '/p/CANTfhiFO6S/';
 
       // If mostRecentPathname is loaded and we reach end of scraping cycle
-      if(loadedPathnames.includes(ig.mostRecentPathname)) {
+      if(loadedPathnames.includes(ig.mostRecentPathname) || pathnamesCollection.length >= 250) {
         loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(ig.mostRecentPathname));
         addLoadedPathnamesToCollection();
 
