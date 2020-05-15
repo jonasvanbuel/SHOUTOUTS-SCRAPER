@@ -5,6 +5,7 @@ const ig = {
   API_BASE_URL: 'https://shoutouts-stream.herokuapp.com',
   INSTA_BASE_URL: 'https://instagram.com',
   SUBJECT: 'mariotestino',
+  DEVISE: 'MAC', //'MAC' or 'RASP'
   browser: null,
   page: null,
   serverState: null,
@@ -40,9 +41,20 @@ const ig = {
   },
 
   initialize: async () => {
-    ig.browser = await puppeteer.launch({
-      headless: false
-    });
+    // Detect which devise is scraping: 'MAC' or 'RASP'
+    let options = null;
+    if (ig.DEVISE === 'MAC') {
+      options = {
+        headless: false
+      }
+    }
+    if (ig.DEVISE === 'RASP') {
+      options = {
+        executablePath: '/usr/bin/chromium-browser',
+        headless: false
+      }
+    }
+    ig.browser = await puppeteer.launch(options);
     ig.page = await ig.browser.newPage();
   },
 
