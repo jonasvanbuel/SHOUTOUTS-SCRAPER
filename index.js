@@ -1,18 +1,18 @@
-const instagram = require('./instagram');
+const ig = require('./instagram');
 
 (async () => {
-  await instagram.fetchServerState();
-  await instagram.setMostRecentPathname();
+  await ig.fetchServerState();
+  await ig.setMostRecentPathname();
 
-  await instagram.initialize();
-  await instagram.login('socialdeckone', 'socialdeck1');
-  await instagram.gotToSubjectTaggedPage('mariotestino');
+  await ig.initialize();
+  await ig.login('socialdeckone', 'socialdeck1');
+  await ig.gotToSubjectTaggedPage('mariotestino');
 
-  await instagram.getNewPathnames();
-  await instagram.createNewTaggedPosts();
+  await ig.getNewPathnames();
+  await ig.createNewTaggedPosts();
 
-  // await instagram.updateTaggedPosts();
+  // await ig.updateTaggedPosts();
 
-  await instagram.browser.close();
+  await ig.browser.close();
 })();
 

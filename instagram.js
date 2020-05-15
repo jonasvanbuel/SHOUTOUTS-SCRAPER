@@ -1,9 +1,10 @@
 const puppeteer = require('puppeteer');
 const fetch = require('node-fetch');
 
-const BASE_URL = 'https://www.instagram.com/';
-
-const instagram = {
+const ig = {
+  API_BASE_URL: 'https://shoutouts-stream.herokuapp.com',
+  INSTA_BASE_URL: 'https://instagram.com',
+  SUBJECT: 'mariotestino',
   browser: null,
   page: null,
   serverState: null,
@@ -11,16 +12,13 @@ const instagram = {
   newPathnames: null,
 
   fetchServerState: async () => {
-    const API_BASE_URL = 'http://localhost:3000';
-    const SUBJECT_USERNAME = 'mariotestino';
-    const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
+    const endpoint = `${ig.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
     serverState = await fetch(endpoint)
       .then(response => response.json())
       .then(data => data)
 
     if (serverState) {
       console.log('Initial server state received set...');
-      return serverState;
     }
   },
 
@@ -42,30 +40,29 @@ const instagram = {
   },
 
   initialize: async () => {
-    instagram.browser = await puppeteer.launch({
+    ig.browser = await puppeteer.launch({
       headless: false
     });
-    instagram.page = await instagram.browser.newPage();
+    ig.page = await ig.browser.newPage();
   },
 
   login: async (username, password) => {
-    await instagram.page.goto(BASE_URL, { waitUntil: 'networkidle2' });
+    await ig.page.goto(ig.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
 
-    await instagram.page.waitFor(5000);
+    await ig.page.waitFor(1000);
 
-    await instagram.page.type('input[name="username"]', username, { delay: 100 });
-    await instagram.page.type('input[name="password"]', password, { delay: 100 });
+    await ig.page.type('input[name="username"]', username, { delay: 100 });
+    await ig.page.type('input[name="password"]', password, { delay: 100 });
 
     // REFACTOR BELOW
-    let loginButton = await instagram.page.$x('//*[@id="react-root"]/section/main/article/div[2]/div[1]/div/form/div[4]/button');
+    let loginButton = await ig.page.$x('//*[@id="react-root"]/section/main/article/div[2]/div[1]/div/form/div[4]/button');
+
     await loginButton[0].click();
   },
 
   gotToSubjectTaggedPage: async (subject) => {
-    await instagram.page.waitForNavigation({ waitUntil: 'networkidle2' });
-
-    const subjectUrl = `https://www.instagram.com/${subject}/tagged`;
-    await instagram.page.goto(subjectUrl, { waitUntil: 'networkidle2' });
+    await ig.page.waitForNavigation({ waitUntil: 'networkidle2' });
+    await ig.page.goto(`${ig.INSTA_BASE_URL}/${ig.SUBJECT}/tagged`, { waitUntil: 'networkidle2' });
     console.log('Subject tagged page loaded...');
   },
 
@@ -79,8 +76,8 @@ const instagram = {
     let pathnamesCollection = [];
 
     async function fetchLoadedPathnames() {
-      await instagram.page.waitFor(5000);
-      loadedPathnames = await instagram.page.evaluate(() => {
+      await ig.page.waitFor(5000);
+      loadedPathnames = await ig.page.evaluate(() => {
         const pathnames = [];
         const loadedPosts = document.querySelectorAll('.v1Nh3');
         loadedPosts.forEach((element) => {
@@ -94,16 +91,18 @@ const instagram = {
 
     async function checkLoadedPathnames() {
 
+      const mostRecentPathnameProxy = '/p/CANTfhiFO6S/';
+
       // If mostRecentPathname is loaded and we reach end of scraping cycle
-      if(loadedPathnames.includes(mostRecentPathname)) {
-        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(mostRecentPathname));
+      if(loadedPathnames.includes(mostRecentPathnameProxy)) {
+        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(mostRecentPathnameProxy));
         addLoadedPathnamesToCollection();
 
         console.log(`Number of new pathnames: ${pathnamesCollection.length}`);
         console.log(pathnamesCollection);
         newPathnames = pathnamesCollection;
 
-        await instagram.page.close();
+        await ig.page.close();
 
       } else {
         addLoadedPathnamesToCollection();
@@ -126,12 +125,9 @@ const instagram = {
     const newPathnamesCopy = newPathnames.slice().reverse();
 
     for (const newPathname of newPathnamesCopy) {
-      const postUrl = `https://www.instagram.com${newPathname}`;
-
-      // OPEN NEW WINDOW
-      const page = await instagram.browser.newPage();
-      await page.goto(postUrl, { waitUntil: 'networkidle2' });
-      await page.waitFor(3000);
+      const page = await ig.browser.newPage();
+      await page.goto(`${ig.INSTA_BASE_URL}${newPathname}`, { waitUntil: 'networkidle2' });
+      await page.waitFor(2000);
 
       const taggedPost = await page.evaluate(() => {
         const fetchLikes = () => {
@@ -155,10 +151,7 @@ const instagram = {
         };
       });
 
-      const API_BASE_URL = 'http://localhost:3000';
-      const SUBJECT_USERNAME = 'mariotestino';
-      const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
-
+      const endpoint = `${ig.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
       fetch(endpoint, {
           method: 'post',
           body: JSON.stringify(taggedPost),
@@ -182,13 +175,13 @@ const instagram = {
   },
 
   updateTaggedPosts: async () => {
-    serverState = await instagram.fetchServerState();
+    serverState = await ig.fetchServerState();
     serverStateCopy = serverState;
 
     for (const taggedPost of serverStateCopy) {
-      const page = await instagram.browser.newPage();
-      await page.goto(`https://www.instagram.com${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
-      await page.waitFor(3000);
+      const page = await ig.browser.newPage();
+      await page.goto(`${ig.INSTA_BASE_URL}${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
+      await page.waitFor(2000);
 
       const body = await page.evaluate(() => {
         return {
@@ -198,29 +191,24 @@ const instagram = {
 
       body["pathname"] = taggedPost.pathname;
 
-      const API_BASE_URL = 'http://localhost:3000';
-      const SUBJECT_USERNAME = 'mariotestino';
-      const endpoint = `${API_BASE_URL}/api/v1/tagged_posts/${SUBJECT_USERNAME}`;
-
-      fetch(endpoint, {
+      const endpoint = `${ig.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+      serverState = await fetch(endpoint, {
           method: 'patch',
           body: JSON.stringify(body),
           headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
-        .then((data) => {
-          serverState = data;
-        })
+        .then(data => data)
     }
   }
 };
 
 // PRIVATE HELPER FUNCTIONS
 const scrollDown = async () => {
-  await instagram.page.evaluate(() => {
+  await ig.page.evaluate(() => {
     const randomNumber = Math.random() * 3;
     window.scrollBy(0, window.innerHeight * randomNumber);
   });
 };
 
-module.exports = instagram;
+module.exports = ig;
