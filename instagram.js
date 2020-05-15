@@ -41,6 +41,7 @@ const ig = {
 
   initialize: async () => {
     ig.browser = await puppeteer.launch({
+      executablePath: '/usr/bin/chromium-browser',
       headless: false
     });
     ig.page = await ig.browser.newPage();
