@@ -4,10 +4,10 @@ dotenv.config();
 
 let API_BASE_URL = null;
 if (process.env.NODE_ENV === 'development') {
-  API_BASE_URL = 'https://shoutouts-stream.herokuapp.com';
+  API_BASE_URL = 'https://localhost:3000';
 }
 if (process.env.NODE_ENV === 'production') {
-  API_BASE_URL = 'https://localhost:3000';
+  API_BASE_URL = 'https://shoutouts-stream.herokuapp.com';
 }
 
 module.exports = {
