@@ -144,6 +144,9 @@ const ig = {
           if (document.querySelector('.Nm9Fw button span')) {
             return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
           }
+          if (document.querySelector('.Nm9Fw button').innerText === 'like this') {
+            return 0;
+          }
           if (document.querySelector('.Nm9Fw button')) {
             return document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
           }
