@@ -137,7 +137,7 @@ const ig = {
     for (const newPathname of newPathnamesCopy) {
       const page = await ig.browser.newPage();
       await page.goto(`${config.INSTA_BASE_URL}${newPathname}`, { waitUntil: 'networkidle2' });
-      await page.waitFor(2000);
+      await page.waitFor(4000);
 
       const taggedPost = await page.evaluate(() => {
         const fetchLikes = () => {
@@ -153,7 +153,7 @@ const ig = {
         const fetchImgUrl = () => {
           // If image
           if (document.querySelector('.FFVAD')) {
-            return document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0];
+            return document.querySelector('.FFVAD').srcset.split(',')[0].split(' ')[0];
           }
           // If video
           if (document.querySelector('._8jZFn')) {
