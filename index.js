@@ -15,5 +15,3 @@ const ig = require('./instagram');
 
   await ig.browser.close();
 })();
-
-// Test comment - to be deleted v2
