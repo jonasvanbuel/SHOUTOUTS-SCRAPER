@@ -1,11 +1,9 @@
 const puppeteer = require('puppeteer');
 const fetch = require('node-fetch');
+const config = require('./config');
 
 const ig = {
-  API_BASE_URL: 'https://shoutouts-stream.herokuapp.com',
-  INSTA_BASE_URL: 'https://instagram.com',
   SUBJECT: 'mariotestino',
-  DEVISE: 'RASP', //'MAC' or 'RASP'
   browser: null,
   page: null,
   serverState: null,
@@ -13,7 +11,7 @@ const ig = {
   newPathnames: null,
 
   fetchServerState: async () => {
-    const endpoint = `${ig.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+    const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
     serverState = await fetch(endpoint)
       .then(response => response.json())
       .then(data => data)
@@ -43,12 +41,12 @@ const ig = {
   initialize: async () => {
     // Detect which devise is scraping: 'MAC' or 'RASP'
     let options = null;
-    if (ig.DEVISE === 'MAC') {
+    if (config.DEVISE === 'MAC') {
       options = {
         headless: false
       }
     }
-    if (ig.DEVISE === 'RASP') {
+    if (config.DEVISE === 'RASP') {
       options = {
         executablePath: '/usr/bin/chromium-browser',
         headless: false
@@ -59,7 +57,7 @@ const ig = {
   },
 
   login: async (username, password) => {
-    await ig.page.goto(ig.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
+    await ig.page.goto(config.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
 
     await ig.page.waitFor(1000);
 
@@ -74,7 +72,7 @@ const ig = {
 
   gotToSubjectTaggedPage: async (subject) => {
     await ig.page.waitForNavigation({ waitUntil: 'networkidle2' });
-    await ig.page.goto(`${ig.INSTA_BASE_URL}/${ig.SUBJECT}/tagged`, { waitUntil: 'networkidle2' });
+    await ig.page.goto(`${config.INSTA_BASE_URL}/${ig.SUBJECT}/tagged`, { waitUntil: 'networkidle2' });
     console.log('Subject tagged page loaded...');
   },
 
@@ -138,7 +136,7 @@ const ig = {
 
     for (const newPathname of newPathnamesCopy) {
       const page = await ig.browser.newPage();
-      await page.goto(`${ig.INSTA_BASE_URL}${newPathname}`, { waitUntil: 'networkidle2' });
+      await page.goto(`${config.INSTA_BASE_URL}${newPathname}`, { waitUntil: 'networkidle2' });
       await page.waitFor(2000);
 
       const taggedPost = await page.evaluate(() => {
@@ -150,6 +148,18 @@ const ig = {
             return document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
           }
           console.log("Problem with fetching likes...");
+        };
+
+        const fetchImgUrl = () => {
+          // If image
+          if (document.querySelector('.FFVAD')) {
+            return document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0];
+          }
+          // If video
+          if (document.querySelector('._8jZFn')) {
+            return document.querySelector('._8jZFn').src;
+          }
+          console.log("Problem with fetching image url...");
         }
 
         return {
@@ -157,13 +167,13 @@ const ig = {
           message: document.querySelector('.C4VMK') ? document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'") : "",
           posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
           pathname: window.location.pathname,
-          image_url: document.querySelector('.FFVAD').srcset.split(',')[2].split(' ')[0],
+          image_url: fetchImgUrl(),
           user_avatar_url: document.querySelector('._6q-tv').src,
           likes: parseInt(fetchLikes())
         };
       });
 
-      const endpoint = `${ig.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+      const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
       fetch(endpoint, {
           method: 'post',
           body: JSON.stringify(taggedPost),
@@ -192,7 +202,7 @@ const ig = {
 
     for (const taggedPost of serverStateCopy) {
       const page = await ig.browser.newPage();
-      await page.goto(`${ig.INSTA_BASE_URL}${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
+      await page.goto(`${config.INSTA_BASE_URL}${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
       await page.waitFor(2000);
 
       const body = await page.evaluate(() => {
@@ -203,7 +213,7 @@ const ig = {
 
       body["pathname"] = taggedPost.pathname;
 
-      const endpoint = `${ig.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+      const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
       serverState = await fetch(endpoint, {
           method: 'patch',
           body: JSON.stringify(body),
