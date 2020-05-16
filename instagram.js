@@ -33,8 +33,8 @@ const ig = {
     }
 
     if (mostRecentPost.pathname) {
-      mostRecentPathname = mostRecentPost.pathname;
-      console.log(`mostRecentPathname set: "${mostRecentPathname}"...`);
+      ig.mostRecentPathname = mostRecentPost.pathname;
+      console.log(`mostRecentPathname set: "${ig.mostRecentPathname}"...`);
     }
   },
 
@@ -78,7 +78,7 @@ const ig = {
 
   getNewPathnames: async () => {
     console.log('Fetching new pathnames...');
-    if (!mostRecentPathname) {
+    if (!ig.mostRecentPathname) {
       console.log('mostRecentPathname not successfully set...');
     };
 
@@ -88,13 +88,13 @@ const ig = {
     async function fetchLoadedPathnames() {
       await ig.page.waitFor(5000);
       loadedPathnames = await ig.page.evaluate(() => {
-        const pathnames = [];
+        const loadedPathnames = [];
         const loadedPosts = document.querySelectorAll('.v1Nh3');
         loadedPosts.forEach((element) => {
           let pathname = element.firstChild.pathname;
-          pathnames.push(pathname);
+          loadedPathnames.push(pathname);
         })
-        return pathnames;
+        return loadedPathnames;
       });
       await checkLoadedPathnames();
     };
