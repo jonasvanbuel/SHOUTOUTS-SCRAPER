@@ -141,16 +141,25 @@ const ig = {
 
       const taggedPost = await page.evaluate(() => {
         const fetchLikes = () => {
-          if (document.querySelector('.Nm9Fw button span')) {
-            return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
+          // If image is loaded
+          if (document.querySelector('.Nm9Fw')) {
+            if (document.querySelector('.Nm9Fw button span')) {
+              return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
+            }
+            if (document.querySelector('.Nm9Fw button').innerText === 'like this') {
+              return 0;
+            }
+            if (document.querySelector('.Nm9Fw button')) {
+              return document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
+            }
           }
-          if (document.querySelector('.Nm9Fw button').innerText === 'like this') {
-            return 0;
+
+          // If video is loaded
+          if (document.querySelector('.HbPOm')) {
+            if (document.querySelector('.HbPOm span span')) {
+              return document.querySelector('.HbPOm span span').innerText.replace(/,/g, "");
+            }
           }
-          if (document.querySelector('.Nm9Fw button')) {
-            return document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
-          }
-          console.log("Problem with fetching likes...");
         };
 
         const fetchImgUrl = () => {
