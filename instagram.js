@@ -86,6 +86,8 @@ const ig = {
       console.log('mostRecentPathname not successfully set...');
     };
 
+    await ig.setMostRecentPathname();
+
     let loadedPathnames = [];
     let pathnamesCollection = [];
 
@@ -221,9 +223,9 @@ const ig = {
   },
 
   updateTaggedPosts: async () => {
+    console.log('Checking and updating likes of wider selection...');
     // TO DO: FETCH WIDER SELECTION FROM SERVER
     serverState = await ig.fetchServerState();
-    console.log('Checking and updating likes of wider selection...');
 
     for (const taggedPost of serverState) {
       const page = await ig.browser.newPage();
