@@ -17,11 +17,12 @@ const ig = {
       .then(data => data)
 
     if (serverState) {
-      console.log('Initial server state received set...');
+      console.log('Server state received...');
     }
+    return serverState;
   },
 
-  setMostRecentPathname: async () => {
+  setMostRecentPathname: () => {
     let mostRecentDateTime = null;
     let mostRecentPost = null;
 
@@ -68,16 +69,19 @@ const ig = {
     let loginButton = await ig.page.$x('//*[@id="react-root"]/section/main/article/div[2]/div[1]/div/form/div[4]/button');
 
     await loginButton[0].click();
-  },
-
-  gotToSubjectTaggedPage: async (subject) => {
     await ig.page.waitForNavigation({ waitUntil: 'networkidle2' });
-    await ig.page.goto(`${config.INSTA_BASE_URL}/${ig.SUBJECT}/tagged`, { waitUntil: 'networkidle2' });
-    console.log('Subject tagged page loaded...');
+    console.log('Logged in...');
   },
 
-  getNewPathnames: async () => {
-    console.log('Fetching new pathnames...');
+  gotToSubjectTaggedPage: async () => {
+    ig.page = await ig.browser.newPage();
+    await ig.page.goto(`${config.INSTA_BASE_URL}/${ig.SUBJECT}/tagged`, { waitUntil: 'networkidle2' });
+    console.log('Tagged page loaded...');
+  },
+
+  findNewTaggedPosts: async () => {
+    console.log('Finding new tagged posts...');
+
     if (!ig.mostRecentPathname) {
       console.log('mostRecentPathname not successfully set...');
     };
@@ -87,6 +91,7 @@ const ig = {
 
     async function fetchLoadedPathnames() {
       await ig.page.waitFor(5000);
+
       loadedPathnames = await ig.page.evaluate(() => {
         const loadedPathnames = [];
         const loadedPosts = document.querySelectorAll('.v1Nh3');
@@ -96,24 +101,20 @@ const ig = {
         })
         return loadedPathnames;
       });
+
       await checkLoadedPathnames();
     };
 
     async function checkLoadedPathnames() {
-
       // const mostRecentPathnameProxy = '/p/CANTfhiFO6S/';
 
       // If mostRecentPathname is loaded and we reach end of scraping cycle
       if(loadedPathnames.includes(ig.mostRecentPathname) || pathnamesCollection.length >= 250) {
         loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(ig.mostRecentPathname));
         addLoadedPathnamesToCollection();
-
-        console.log(`Number of new pathnames: ${pathnamesCollection.length}`);
-        console.log(pathnamesCollection);
-        newPathnames = pathnamesCollection;
-
+        console.log(`Number of new tagged posts: ${pathnamesCollection.length}`);
+        ig.newPathnames = pathnamesCollection;
         await ig.page.close();
-
       } else {
         addLoadedPathnamesToCollection();
         await scrollDown();
@@ -132,7 +133,13 @@ const ig = {
   },
 
   createNewTaggedPosts: async () => {
-    const newPathnamesCopy = newPathnames.slice().reverse();
+    if (ig.newPathnames.length > 0) {
+      console.log('Creating new tagged posts...');
+    }
+    if (ig.newPathnames.length === 0) {
+      console.log('No new tagged posts to be created...');
+    }
+    const newPathnamesCopy = ig.newPathnames.slice().reverse();
 
     for (const newPathname of newPathnamesCopy) {
       const page = await ig.browser.newPage();
@@ -140,21 +147,26 @@ const ig = {
       await page.waitFor(4000);
 
       const taggedPost = await page.evaluate(() => {
+        // This function needs to be externalized since being reused in updateLikes()
         const fetchLikes = () => {
-          // If image is loaded
-          if (document.querySelector('.Nm9Fw')) {
+          // If image is loaded => "LIKES"
+          // If likes div is present
+          const imageDiv = document.querySelector('.Nm9Fw');
+          if (imageDiv) {
             if (document.querySelector('.Nm9Fw button span')) {
               return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
             }
             if (document.querySelector('.Nm9Fw button').innerText === 'like this') {
               return 0;
             }
+            // IF "Liked by Mario Testino and 1 other"
             if (document.querySelector('.Nm9Fw button')) {
-              return document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
+              let number = document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
+              return parseInt(number) + 1;
             }
           }
 
-          // If video is loaded
+          // If video is loaded => "VIEWS"
           if (document.querySelector('.HbPOm')) {
             if (document.querySelector('.HbPOm span span')) {
               return document.querySelector('.HbPOm span span').innerText.replace(/,/g, "");
@@ -163,13 +175,13 @@ const ig = {
         };
 
         const fetchImgUrl = () => {
-          // If image
-          if (document.querySelector('.FFVAD')) {
-            return document.querySelector('.FFVAD').srcset.split(',')[0].split(' ')[0];
-          }
           // If video
           if (document.querySelector('._8jZFn')) {
             return document.querySelector('._8jZFn').src;
+          }
+          // If image
+          if (document.querySelector('.FFVAD')) {
+            return document.querySelector('.FFVAD').srcset.split(',')[0].split(' ')[0];
           }
           console.log("Problem with fetching image url...");
         }
@@ -196,30 +208,57 @@ const ig = {
           serverState = data;
 
           // Delete this pathname from 'newPathnames' array in module state
-          const index = newPathnames.indexOf(newPathname);
+          const index = ig.newPathnames.indexOf(newPathname);
           if (index > -1) {
-            newPathnames.splice(index, 1);
+            ig.newPathnames.splice(index, 1);
           }
 
           console.log(`New tagged post created from "${newPathname}"...`);
-          console.log(newPathnames);
+          console.log(`New posts still remaining: ${ig.newPathnames.length}`);
         })
       await page.close();
     }
   },
 
   updateTaggedPosts: async () => {
+    // TO DO: FETCH WIDER SELECTION FROM SERVER
     serverState = await ig.fetchServerState();
-    serverStateCopy = serverState;
+    console.log('Checking and updating likes of wider selection...');
 
-    for (const taggedPost of serverStateCopy) {
+    for (const taggedPost of serverState) {
       const page = await ig.browser.newPage();
       await page.goto(`${config.INSTA_BASE_URL}${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
       await page.waitFor(2000);
 
       const body = await page.evaluate(() => {
+        const fetchLikes = () => {
+          // If image is loaded => "LIKES"
+          // If likes div is present
+          const imageDiv = document.querySelector('.Nm9Fw');
+          if (imageDiv) {
+            if (document.querySelector('.Nm9Fw button span')) {
+              return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
+            }
+            if (document.querySelector('.Nm9Fw button').innerText === 'like this') {
+              return 0;
+            }
+            // IF "Liked by Mario Testino and 1 other"
+            if (document.querySelector('.Nm9Fw button')) {
+              let number = document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
+              return parseInt(number) + 1;
+            }
+          }
+
+          // If video is loaded => "VIEWS"
+          if (document.querySelector('.HbPOm')) {
+            if (document.querySelector('.HbPOm span span')) {
+              return document.querySelector('.HbPOm span span').innerText.replace(/,/g, "");
+            }
+          }
+        };
+
         return {
-          likes: parseInt(document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, ""))
+          likes: parseInt(fetchLikes())
         }
       })
 
@@ -233,6 +272,8 @@ const ig = {
         })
         .then(response => response.json())
         .then(data => data)
+
+      await page.close();
     }
   }
 };
