@@ -1,17 +1,24 @@
 const ig = require('./instagram');
 
-(async () => {
+const initialize = async () => {
   await ig.fetchServerState();
-  await ig.setMostRecentPathname();
+  ig.setMostRecentPathname();
 
   await ig.initialize();
   await ig.login('socialdeckone', 'socialdeck1');
-  await ig.gotToSubjectTaggedPage('mariotestino');
+  await fetchNewPosts();
+};
 
-  await ig.getNewPathnames();
+const fetchNewPosts = async () => {
+  await ig.gotToSubjectTaggedPage();
+  await ig.findNewTaggedPosts();
   await ig.createNewTaggedPosts();
+  await updateLikes();
+};
 
-  // await ig.updateTaggedPosts();
+const updateLikes = async () => {
+  await ig.updateTaggedPosts();
+  await fetchNewPosts();
+};
 
-  await ig.browser.close();
-})();
+initialize();
