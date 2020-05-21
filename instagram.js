@@ -234,7 +234,7 @@ const ig = {
 
       const body = await page.evaluate((pathname) => {
         // If post has been deleted
-        if (document.querySelector('.MCXLF').innerText === "Sorry, this page isn't available." || false) {
+        if (document.querySelector('.MCXLF')) {
           return {
             pathname: pathname,
             status: 'deleted'
