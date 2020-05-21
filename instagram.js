@@ -44,13 +44,15 @@ const ig = {
     let options = null;
     if (config.DEVISE === 'MAC') {
       options = {
-        headless: false
+        headless: false,
+        devtools: true
       }
     }
     if (config.DEVISE === 'RASP') {
       options = {
         executablePath: '/usr/bin/chromium-browser',
-        headless: false
+        headless: false,
+        devtools: true
       }
     }
     ig.browser = await puppeteer.launch(options);
@@ -232,7 +234,16 @@ const ig = {
       await page.goto(`${config.INSTA_BASE_URL}${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
       await page.waitFor(2000);
 
-      const body = await page.evaluate(() => {
+      const body = await page.evaluate((pathname) => {
+        // If post has been deleted
+        if (document.querySelector('.MCXLF').innerText === "Sorry, this page isn't available.") {
+          return {
+            pathname: pathname,
+            status: 'deleted'
+          }
+        }
+
+        // If post still exists
         const fetchLikes = () => {
           // If image is loaded => "LIKES"
           // If likes div is present
@@ -247,7 +258,7 @@ const ig = {
             // IF "Liked by Mario Testino and 1 other"
             if (document.querySelector('.Nm9Fw button')) {
               let number = document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
-              return parseInt(number) + 1;
+              return (parseInt(number) + 1);
             }
           }
 
@@ -260,20 +271,32 @@ const ig = {
         };
 
         return {
+          pathname: pathname,
+          status: 'live',
           likes: parseInt(fetchLikes())
         }
-      })
+      }, taggedPost.pathname);
 
-      body["pathname"] = taggedPost.pathname;
+      if (body.status === 'live') {
+        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+        serverState = await fetch(endpoint, {
+            method: 'patch',
+            body: JSON.stringify(body),
+            headers: { 'Content-Type': 'application/json' }
+          })
+          .then(response => response.json())
+          .then(data => data)
+      }
 
-      const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
-      serverState = await fetch(endpoint, {
-          method: 'patch',
-          body: JSON.stringify(body),
-          headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(data => data)
+      if (body.status === 'deleted') {
+        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}/?pathname=${body.pathname}`;
+        serverState = await fetch(endpoint, {
+            method: 'delete',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          .then(response => response.json())
+          .then(data => data)
+      }
 
       await page.close();
     }
