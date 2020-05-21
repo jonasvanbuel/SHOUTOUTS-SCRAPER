@@ -44,15 +44,13 @@ const ig = {
     let options = null;
     if (config.DEVISE === 'MAC') {
       options = {
-        headless: false,
-        devtools: true
+        headless: false
       }
     }
     if (config.DEVISE === 'RASP') {
       options = {
         executablePath: '/usr/bin/chromium-browser',
-        headless: false,
-        devtools: true
+        headless: false
       }
     }
     ig.browser = await puppeteer.launch(options);
