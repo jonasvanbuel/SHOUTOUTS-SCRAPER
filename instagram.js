@@ -65,9 +65,10 @@ const ig = {
     await ig.page.type('input[name="username"]', username, { delay: 100 });
     await ig.page.type('input[name="password"]', password, { delay: 100 });
 
-    // REFACTOR BELOW
-    let loginButton = await ig.page.$x('//*[@id="react-root"]/section/main/article/div[2]/div[1]/div/form/div[4]/button');
+    // OLD SELECTOR:
+    // let loginButton = await ig.page.$x('//*[@id="react-root"]/section/main/article/div[2]/div[1]/div/form/div[4]/button');
 
+    let loginButton = await ig.page.$$('button[type="submit"]');
     await loginButton[0].click();
     await ig.page.waitForNavigation({ waitUntil: 'networkidle2' });
     console.log('Logged in...');
@@ -149,11 +150,12 @@ const ig = {
       await page.waitFor(4000);
 
       const taggedPost = await page.evaluate(() => {
+        const imageDiv = document.querySelector('.Nm9Fw');
+        const videoDiv = document.querySelector('.HbPOm');
+
         // This function needs to be externalized since being reused in updateLikes()
         const fetchLikes = () => {
           // If image is loaded => "LIKES"
-          // If likes div is present
-          const imageDiv = document.querySelector('.Nm9Fw');
           if (imageDiv) {
             if (document.querySelector('.Nm9Fw button span')) {
               return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
@@ -169,7 +171,7 @@ const ig = {
           }
 
           // If video is loaded => "VIEWS"
-          if (document.querySelector('.HbPOm')) {
+          if (videoDiv) {
             if (document.querySelector('.HbPOm span span')) {
               return document.querySelector('.HbPOm span span').innerText.replace(/,/g, "");
             }
@@ -188,36 +190,42 @@ const ig = {
           console.log("Problem with fetching image url...");
         }
 
-        return {
-          author: document.querySelector('.sqdOP').innerText,
-          message: document.querySelector('.C4VMK') ? document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'") : "",
-          posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
-          pathname: window.location.pathname,
-          image_url: fetchImgUrl(),
-          user_avatar_url: document.querySelector('._6q-tv').src,
-          likes: parseInt(fetchLikes())
-        };
+        // If post still exists...
+        if (imageDiv || videoDiv) {
+          return {
+            author: document.querySelector('.sqdOP').innerText,
+            message: document.querySelector('.C4VMK') ? document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'") : "",
+            posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
+            pathname: window.location.pathname,
+            image_url: fetchImgUrl(),
+            user_avatar_url: document.querySelector('._6q-tv').src,
+            likes: parseInt(fetchLikes())
+          };
+        }
+        return null;
       });
 
-      const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
-      fetch(endpoint, {
-          method: 'post',
-          body: JSON.stringify(taggedPost),
-          headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then((data) => {
-          serverState = data;
+      if (taggedPost) {
+        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+        fetch(endpoint, {
+            method: 'post',
+            body: JSON.stringify(taggedPost),
+            headers: { 'Content-Type': 'application/json' }
+          })
+          .then(response => response.json())
+          .then((data) => {
+            serverState = data;
 
-          // Delete this pathname from 'newPathnames' array in module state
-          const index = ig.newPathnames.indexOf(newPathname);
-          if (index > -1) {
-            ig.newPathnames.splice(index, 1);
-          }
+            // Delete this pathname from 'newPathnames' array in module state
+            const index = ig.newPathnames.indexOf(newPathname);
+            if (index > -1) {
+              ig.newPathnames.splice(index, 1);
+            }
 
-          console.log(`New tagged post created from "${newPathname}"...`);
-          console.log(`New posts still remaining: ${ig.newPathnames.length}`);
-        })
+            console.log(`New tagged post created from "${newPathname}"...`);
+            console.log(`New posts still remaining: ${ig.newPathnames.length}`);
+          })
+      }
       await page.close();
     }
   },
@@ -275,8 +283,9 @@ const ig = {
         }
       }, taggedPost.pathname);
 
+      // TO DO: THIS NEEDS PATHNAME TO FIND POST IN DB
       if (body.status === 'live') {
-        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/update_likes`;
         serverState = await fetch(endpoint, {
             method: 'patch',
             body: JSON.stringify(body),
