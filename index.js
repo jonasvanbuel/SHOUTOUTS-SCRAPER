@@ -1,24 +1,46 @@
-const ig = require('./instagram');
+const igTaggedPosts = require('./instagram_tagged_posts');
+const igHashtagPosts = require('./instagram_hashtag_posts');
+
+const config = require('./config');
 
 const initialize = async () => {
-  await ig.fetchServerState();
-  ig.setMostRecentPathname();
+  const {
+    POST_TYPE,
+    INSTAGRAM_ACCOUNT,
+    HASHTAG_NAME,
+    LOGIN_USERNAME,
+    LOGIN_PASSWORD
+  } = config;
 
-  await ig.initialize();
-  await ig.login('socialdeckone', 'socialdeck1');
-  await fetchNewPosts();
+  if (POST_TYPE == "tagged_post") {
+    await igTaggedPosts.fetchServerState();
+    igTaggedPosts.setMostRecentPathname();
+    await igTaggedPosts.initialize();
+    await igTaggedPosts.login(LOGIN_USERNAME, LOGIN_PASSWORD);
+    await fetchNewPosts();
+    const fetchNewPosts = async () => {
+      await igTaggedPosts.gotToSubjectTaggedPage();
+      await igTaggedPosts.findNewTaggedPosts();
+      await igTaggedPosts.createNewTaggedPosts();
+      await updateLikes();
+    };
+    const updateLikes = async () => {
+      await igTaggedPosts.updateTaggedPosts();
+      await fetchNewPosts();
+    };
+  }
+
+  if (POST_TYPE == "hashtag") {
+    await igHashtagPosts.fetchServerState();
+    await igHashtagPosts.initialize();
+    await igHashtagPosts.login(LOGIN_USERNAME, LOGIN_PASSWORD);
+    await igHashtagPosts.gotToHashtagPage(HASHTAG_NAME);
+    await igHashtagPosts.fetchPostUrls();
+    await igHashtagPosts.sendHashtagPosts();
+    await igHashtagPosts.sendHashtagPosts();
+  }
 };
 
-const fetchNewPosts = async () => {
-  await ig.gotToSubjectTaggedPage();
-  await ig.findNewTaggedPosts();
-  await ig.createNewTaggedPosts();
-  await updateLikes();
-};
 
-const updateLikes = async () => {
-  await ig.updateTaggedPosts();
-  await fetchNewPosts();
-};
 
 initialize();

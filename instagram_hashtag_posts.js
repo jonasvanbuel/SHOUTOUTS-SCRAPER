@@ -1,42 +1,26 @@
 const puppeteer = require('puppeteer');
 const fetch = require('node-fetch');
+
 const config = require('./config');
 
-const ig = {
-  SUBJECT: 'mariotestino',
+const igHashtagPosts = {
+  HASHTAG: config.HASHTAG_NAME,
   browser: null,
   page: null,
   serverState: null,
-  mostRecentPathname: null,
+  mostRecentPathname: "/p/B_1cZNOFjYS/",
   newPathnames: null,
 
   fetchServerState: async () => {
-    const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+    const endpoint = `${config.API_BASE_URL}/api/v1/hashtag_posts/${igHashtagPosts.HASHTAG}`;
     serverState = await fetch(endpoint)
       .then(response => response.json())
-      .then(data => data)
+      .then(data => data);
 
     if (serverState) {
       console.log('Server state received...');
     }
     return serverState;
-  },
-
-  setMostRecentPathname: () => {
-    let mostRecentDateTime = null;
-    let mostRecentPost = null;
-
-    for (const taggedPost of serverState) {
-      if (Date.parse(taggedPost.posted_at) >= mostRecentDateTime || !mostRecentDateTime) {
-        mostRecentDateTime = Date.parse(taggedPost.posted_at);
-        mostRecentPost = taggedPost;
-      }
-    }
-
-    if (mostRecentPost.pathname) {
-      ig.mostRecentPathname = mostRecentPost.pathname;
-      console.log(`mostRecentPathname set: "${ig.mostRecentPathname}"...`);
-    }
   },
 
   initialize: async () => {
@@ -53,49 +37,40 @@ const ig = {
         headless: false
       }
     }
-    ig.browser = await puppeteer.launch(options);
-    ig.page = await ig.browser.newPage();
+    igHashtagPosts.browser = await puppeteer.launch(options);
+    igHashtagPosts.page = await igHashtagPosts.browser.newPage();
   },
 
   login: async (username, password) => {
-    await ig.page.goto(config.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
+    await igHashtagPosts.page.goto(config.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
 
-    await ig.page.waitFor(1000);
+    await igHashtagPosts.page.waitFor(1000);
 
-    await ig.page.type('input[name="username"]', username, { delay: 100 });
-    await ig.page.type('input[name="password"]', password, { delay: 100 });
+    await igHashtagPosts.page.type('input[name="username"]', username, { delay: 100 });
+    await igHashtagPosts.page.type('input[name="password"]', password, { delay: 100 });
 
-    // OLD SELECTOR:
-    // let loginButton = await ig.page.$x('//*[@id="react-root"]/section/main/article/div[2]/div[1]/div/form/div[4]/button');
-
-    let loginButton = await ig.page.$$('button[type="submit"]');
+    let loginButton = await igHashtagPosts.page.$$('button[type="submit"]');
     await loginButton[0].click();
-    await ig.page.waitForNavigation({ waitUntil: 'networkidle2' });
+    await igHashtagPosts.page.waitForNavigation({ waitUntil: 'networkidle2' });
     console.log('Logged in...');
   },
 
-  gotToSubjectTaggedPage: async () => {
-    ig.page = await ig.browser.newPage();
-    await ig.page.goto(`${config.INSTA_BASE_URL}/${ig.SUBJECT}/tagged`, { waitUntil: 'networkidle2' });
-    console.log('Tagged page loaded...');
+  gotToHashtagPage: async (hashtag) => {
+    igHashtagPosts.page = await igHashtagPosts.browser.newPage();
+    await igHashtagPosts.page.goto(`${config.INSTA_BASE_URL}/explore/tags/${config.HASHTAG_NAME}/`, { waitUntil: 'networkidle2' });
+    console.log('Page loaded...');
   },
 
-  findNewTaggedPosts: async () => {
-    console.log('Finding new tagged posts...');
-
-    if (!ig.mostRecentPathname) {
-      console.log('mostRecentPathname not successfully set...');
-    };
-
-    await ig.setMostRecentPathname();
+  fetchPostUrls: async () => {
+    console.log('Fetching post urls...');
 
     let loadedPathnames = [];
     let pathnamesCollection = [];
 
     async function fetchLoadedPathnames() {
-      await ig.page.waitFor(5000);
+      await igHashtagPosts.page.waitFor(5000);
 
-      loadedPathnames = await ig.page.evaluate(() => {
+      loadedPathnames = await igHashtagPosts.page.evaluate(() => {
         const loadedPathnames = [];
         const loadedPosts = document.querySelectorAll('.v1Nh3');
         loadedPosts.forEach((element) => {
@@ -109,19 +84,17 @@ const ig = {
     };
 
     async function checkLoadedPathnames() {
-      // const mostRecentPathnameProxy = '/p/CANTfhiFO6S/';
-
-      // If mostRecentPathname is loaded and we reach end of scraping cycle
-      if(loadedPathnames.includes(ig.mostRecentPathname) || pathnamesCollection.length >= 250) {
-        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(ig.mostRecentPathname));
-        addLoadedPathnamesToCollection();
-        console.log(`Number of new tagged posts: ${pathnamesCollection.length}`);
-        ig.newPathnames = pathnamesCollection;
-        await ig.page.close();
-      } else {
+      // pathnamesCollection.length <= 50
+      // loadedPathnames.includes(igHashtagPosts.mostRecentPathname)
+      if (pathnamesCollection.length <= 150) {
         addLoadedPathnamesToCollection();
         await scrollDown();
         await fetchLoadedPathnames();
+      } else {
+        addLoadedPathnamesToCollection();
+        console.log(`Number of posts waiting to be posted: ${pathnamesCollection.length}`);
+        igHashtagPosts.newPathnames = pathnamesCollection;
+        await igHashtagPosts.page.close();
       }
     };
 
@@ -135,17 +108,17 @@ const ig = {
     await fetchLoadedPathnames();
   },
 
-  createNewTaggedPosts: async () => {
-    if (ig.newPathnames.length > 0) {
+  sendHashtagPosts: async () => {
+    if (igHashtagPosts.newPathnames.length > 0) {
       console.log('Creating new tagged posts...');
     }
-    if (ig.newPathnames.length === 0) {
+    if (igHashtagPosts.newPathnames.length === 0) {
       console.log('No new tagged posts to be created...');
     }
-    const newPathnamesCopy = ig.newPathnames.slice().reverse();
+    const newPathnamesCopy = igHashtagPosts.newPathnames.slice().reverse();
 
     for (const newPathname of newPathnamesCopy) {
-      const page = await ig.browser.newPage();
+      const page = await igHashtagPosts.browser.newPage();
       await page.goto(`${config.INSTA_BASE_URL}${newPathname}`, { waitUntil: 'networkidle2' });
       await page.waitFor(4000);
 
@@ -187,12 +160,14 @@ const ig = {
           if (document.querySelector('.FFVAD')) {
             return document.querySelector('.FFVAD').srcset.split(',')[0].split(' ')[0];
           }
+          // TO DO: If image carousel?
           console.log("Problem with fetching image url...");
         }
 
         // If post still exists...
         if (imageDiv || videoDiv) {
           return {
+            post_type: "hashtag",
             author: document.querySelector('.sqdOP').innerText,
             message: document.querySelector('.C4VMK') ? document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'") : "",
             posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
@@ -206,7 +181,8 @@ const ig = {
       });
 
       if (taggedPost) {
-        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+        const endpoint = `${config.API_BASE_URL}/api/v1/hashtag_posts/${igHashtagPosts.HASHTAG}`;
+
         fetch(endpoint, {
             method: 'post',
             body: JSON.stringify(taggedPost),
@@ -217,13 +193,13 @@ const ig = {
             serverState = data;
 
             // Delete this pathname from 'newPathnames' array in module state
-            const index = ig.newPathnames.indexOf(newPathname);
+            const index = igHashtagPosts.newPathnames.indexOf(newPathname);
             if (index > -1) {
-              ig.newPathnames.splice(index, 1);
+              igHashtagPosts.newPathnames.splice(index, 1);
             }
 
             console.log(`New tagged post created from "${newPathname}"...`);
-            console.log(`New posts still remaining: ${ig.newPathnames.length}`);
+            console.log(`New posts still remaining: ${igHashtagPosts.newPathnames.length}`);
           })
       }
       await page.close();
@@ -233,10 +209,10 @@ const ig = {
   updateTaggedPosts: async () => {
     console.log('Checking and updating likes of wider selection...');
     // TO DO: FETCH WIDER SELECTION FROM SERVER
-    serverState = await ig.fetchServerState();
+    serverState = await igHashtagPosts.fetchServerState();
 
     for (const taggedPost of serverState) {
-      const page = await ig.browser.newPage();
+      const page = await igHashtagPosts.browser.newPage();
       await page.goto(`${config.INSTA_BASE_URL}${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
       await page.waitFor(2000);
 
@@ -285,7 +261,7 @@ const ig = {
 
       // TO DO: THIS NEEDS PATHNAME TO FIND POST IN DB
       if (body.status === 'live') {
-        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/update_likes`;
+        const endpoint = `${config.API_BASE_URL}/api/v1/hashtag_posts/update_likes`;
         serverState = await fetch(endpoint, {
             method: 'patch',
             body: JSON.stringify(body),
@@ -296,7 +272,7 @@ const ig = {
       }
 
       if (body.status === 'deleted') {
-        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}/?pathname=${body.pathname}`;
+        const endpoint = `${config.API_BASE_URL}/api/v1/hashtag_posts/${igHashtagPosts.HASHTAG}/?pathname=${body.pathname}`;
         serverState = await fetch(endpoint, {
             method: 'delete',
             headers: { 'Content-Type': 'application/json' }
@@ -312,10 +288,10 @@ const ig = {
 
 // PRIVATE HELPER FUNCTIONS
 const scrollDown = async () => {
-  await ig.page.evaluate(() => {
+  await igHashtagPosts.page.evaluate(() => {
     const randomNumber = Math.random() * 3;
     window.scrollBy(0, window.innerHeight * randomNumber);
   });
 };
 
-module.exports = ig;
+module.exports = igHashtagPosts;
