@@ -8,7 +8,6 @@ const igHashtagPosts = {
   browser: null,
   page: null,
   serverState: null,
-  mostRecentPathname: "/p/B_1cZNOFjYS/",
   newPathnames: null,
 
   fetchServerState: async () => {
@@ -39,13 +38,25 @@ const igHashtagPosts = {
     }
     igHashtagPosts.browser = await puppeteer.launch(options);
     igHashtagPosts.page = await igHashtagPosts.browser.newPage();
+    console.log('Initialized...');
+  },
+
+  openHomepage: async() => {
+    await igHashtagPosts.page.goto(config.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
+    await igHashtagPosts.page.waitFor(1000);
+    console.log('Homepage opened...');
+  },
+
+  acceptCookies: async() => {
+    await igHashtagPosts.page.evaluate(() => {
+      const presentationOverlay = document.getElementsByClassName('RnEpo')[0];
+      const acceptButton = presentationOverlay.getElementsByClassName('bIiDR')[0];
+      acceptButton.click();
+    });
+    console.log('Cookies accepted...');
   },
 
   login: async (username, password) => {
-    await igHashtagPosts.page.goto(config.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
-
-    await igHashtagPosts.page.waitFor(1000);
-
     await igHashtagPosts.page.type('input[name="username"]', username, { delay: 100 });
     await igHashtagPosts.page.type('input[name="password"]', password, { delay: 100 });
 
@@ -84,8 +95,6 @@ const igHashtagPosts = {
     };
 
     async function checkLoadedPathnames() {
-      // pathnamesCollection.length <= 50
-      // loadedPathnames.includes(igHashtagPosts.mostRecentPathname)
       if (pathnamesCollection.length <= 150) {
         addLoadedPathnamesToCollection();
         await scrollDown();

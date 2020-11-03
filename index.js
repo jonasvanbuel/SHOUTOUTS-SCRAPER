@@ -31,16 +31,17 @@ const initialize = async () => {
   }
 
   if (POST_TYPE == "hashtag") {
-    await igHashtagPosts.fetchServerState();
+    // await igHashtagPosts.fetchServerState();
     await igHashtagPosts.initialize();
+    await igHashtagPosts.openHomepage();
+    await igHashtagPosts.acceptCookies();
+
     await igHashtagPosts.login(LOGIN_USERNAME, LOGIN_PASSWORD);
+
     await igHashtagPosts.gotToHashtagPage(HASHTAG_NAME);
     await igHashtagPosts.fetchPostUrls();
     await igHashtagPosts.sendHashtagPosts();
-    await igHashtagPosts.sendHashtagPosts();
   }
 };
-
-
 
 initialize();
