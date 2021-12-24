@@ -140,6 +140,7 @@ const igHashtagPosts = {
           // If image is loaded => "LIKES"
           if (imageDiv) {
             if (document.querySelector('.Nm9Fw button span')) {
+              debugger
               return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
             }
             if (document.querySelector('.Nm9Fw button').innerText === 'like this') {

@@ -13,8 +13,8 @@ const initialize = async () => {
   } = config;
 
   if (POST_TYPE == "tagged_post") {
-    await igTaggedPosts.fetchServerState();
-    igTaggedPosts.setMostRecentPathname();
+    // await igTaggedPosts.fetchServerState();
+    // igTaggedPosts.setMostRecentPathname();
     await igTaggedPosts.initialize();
     await igTaggedPosts.login(LOGIN_USERNAME, LOGIN_PASSWORD);
     await fetchNewPosts();

@@ -12,7 +12,7 @@ const igTaggedPosts = {
   newPathnames: null,
 
   fetchServerState: async () => {
-    const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+    const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${igTaggedPosts.SUBJECT}`;
     serverState = await fetch(endpoint)
       .then(response => response.json())
       .then(data => data)
