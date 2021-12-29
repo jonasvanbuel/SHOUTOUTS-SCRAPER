@@ -16,18 +16,14 @@ const initialize = async () => {
     // await igTaggedPosts.fetchServerState();
     // igTaggedPosts.setMostRecentPathname();
     await igTaggedPosts.initialize();
+    await igTaggedPosts.openHomepage();
+    await igTaggedPosts.acceptCookies();
+
     await igTaggedPosts.login(LOGIN_USERNAME, LOGIN_PASSWORD);
-    await fetchNewPosts();
-    const fetchNewPosts = async () => {
-      await igTaggedPosts.gotToSubjectTaggedPage();
-      await igTaggedPosts.findNewTaggedPosts();
-      await igTaggedPosts.createNewTaggedPosts();
-      await updateLikes();
-    };
-    const updateLikes = async () => {
-      await igTaggedPosts.updateTaggedPosts();
-      await fetchNewPosts();
-    };
+
+    await igTaggedPosts.gotToSubjectTaggedPage(INSTAGRAM_ACCOUNT);
+    await igTaggedPosts.fetchPostsUrls();
+    await igTaggedPosts.sendTaggedPosts();
   }
 
   if (POST_TYPE == "hashtag") {
@@ -39,7 +35,7 @@ const initialize = async () => {
     await igHashtagPosts.login(LOGIN_USERNAME, LOGIN_PASSWORD);
 
     await igHashtagPosts.gotToHashtagPage(HASHTAG_NAME);
-    await igHashtagPosts.fetchPostUrls();
+    await igHashtagPosts.fetchPostsUrls();
     await igHashtagPosts.sendHashtagPosts();
   }
 };

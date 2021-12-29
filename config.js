@@ -15,9 +15,10 @@ module.exports = {
   DEVISE: process.env.DEVISE,
   API_BASE_URL: API_BASE_URL,
   INSTA_BASE_URL: "https://instagram.com",
-  POST_TYPE: "tagged_post",
+  POST_TYPE: "hashtag",
   INSTAGRAM_ACCOUNT: "mariotestino",
   HASHTAG_NAME: "ciaomariotestino",
   LOGIN_USERNAME: "socialdeckone",
-  LOGIN_PASSWORD: "socialdeck1"
+  LOGIN_PASSWORD: "socialdeck1",
+  POSTS_COUNT: 20
 };

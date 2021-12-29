@@ -27,6 +27,7 @@ const igHashtagPosts = {
     let options = null;
     if (config.DEVISE === 'MAC') {
       options = {
+        args: ['--disable-dev-shm-usage'],
         headless: false
       }
     }
@@ -72,7 +73,7 @@ const igHashtagPosts = {
     console.log('Page loaded...');
   },
 
-  fetchPostUrls: async () => {
+  fetchPostsUrls: async () => {
     console.log('Fetching post urls...');
 
     let loadedPathnames = [];
@@ -95,7 +96,7 @@ const igHashtagPosts = {
     };
 
     async function checkLoadedPathnames() {
-      if (pathnamesCollection.length <= 150) {
+      if (pathnamesCollection.length <= config.POSTS_COUNT) {
         addLoadedPathnamesToCollection();
         await scrollDown();
         await fetchLoadedPathnames();
@@ -119,10 +120,10 @@ const igHashtagPosts = {
 
   sendHashtagPosts: async () => {
     if (igHashtagPosts.newPathnames.length > 0) {
-      console.log('Creating new tagged posts...');
+      console.log('Creating new hashtag posts...');
     }
     if (igHashtagPosts.newPathnames.length === 0) {
-      console.log('No new tagged posts to be created...');
+      console.log('No new hashtag posts to be created...');
     }
     const newPathnamesCopy = igHashtagPosts.newPathnames.slice().reverse();
 
@@ -139,17 +140,24 @@ const igHashtagPosts = {
         const fetchLikes = () => {
           // If image is loaded => "LIKES"
           if (imageDiv) {
-            if (document.querySelector('.Nm9Fw button span')) {
-              debugger
-              return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
+            if (document.querySelector('.Nm9Fw a span')) {
+              return document.querySelector('.Nm9Fw a span').innerText.replace(/,/g, "");
             }
-            if (document.querySelector('.Nm9Fw button').innerText === 'like this') {
+            if (document.querySelector('.Nm9Fw a').innerText === 'like this') {
               return 0;
             }
             // IF "Liked by Mario Testino and 1 other"
-            if (document.querySelector('.Nm9Fw button')) {
-              let number = document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
+            if (document.querySelector('.Nm9Fw a')) {
+              let number = document.querySelector('.Nm9Fw a').innerText.match(/\d/g).join();
               return parseInt(number) + 1;
+            }
+
+            // TODO: If likes are hidden - dig deeper...
+            if (document.querySelector('.Nm9Fw .zV_Nj')) {
+              return Math.floor(Math.random() * 2000);
+
+              // const others = document.querySelector('.Nm9Fw .zV_Nj');
+              // others.click();
             }
           }
 
@@ -178,7 +186,7 @@ const igHashtagPosts = {
         if (imageDiv || videoDiv) {
           return {
             post_type: "hashtag",
-            author: document.querySelector('.sqdOP').innerText,
+            author: document.querySelector('.sqdOP._8A5w5.ZIAjV').innerText,
             message: document.querySelector('.C4VMK') ? document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'") : "",
             posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
             pathname: window.location.pathname,
@@ -251,6 +259,14 @@ const igHashtagPosts = {
             if (document.querySelector('.Nm9Fw button')) {
               let number = document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
               return (parseInt(number) + 1);
+            }
+
+            // TODO: If likes are hidden - dig deeper...
+            if (document.querySelector('.Nm9Fw .zV_Nj')) {
+              return Math.floor(Math.random() * 2000);
+
+              // const others = document.querySelector('.Nm9Fw .zV_Nj');
+              // others.click();
             }
           }
 

@@ -36,7 +36,7 @@ const igTaggedPosts = {
 
     if (mostRecentPost.pathname) {
       ig.mostRecentPathname = mostRecentPost.pathname;
-      console.log(`mostRecentPathname set: "${ig.mostRecentPathname}"...`);
+      console.log(`mostRecentPathname set: "${igTaggedPosts.mostRecentPathname}"...`);
     }
   },
 
@@ -45,6 +45,7 @@ const igTaggedPosts = {
     let options = null;
     if (config.DEVISE === 'MAC') {
       options = {
+        args: ['--disable-dev-shm-usage'],
         headless: false
       }
     }
@@ -54,49 +55,52 @@ const igTaggedPosts = {
         headless: false
       }
     }
-    ig.browser = await puppeteer.launch(options);
-    ig.page = await ig.browser.newPage();
+    igTaggedPosts.browser = await puppeteer.launch(options);
+    igTaggedPosts.page = await igTaggedPosts.browser.newPage();
+    console.log('Initialized...');
+  },
+
+  openHomepage: async() => {
+    await igTaggedPosts.page.goto(config.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
+    await igTaggedPosts.page.waitFor(1000);
+    console.log('Homepage opened...');
+  },
+
+  acceptCookies: async() => {
+    await igTaggedPosts.page.evaluate(() => {
+      const presentationOverlay = document.getElementsByClassName('RnEpo')[0];
+      const acceptButton = presentationOverlay.getElementsByClassName('bIiDR')[0];
+      acceptButton.click();
+    });
+    console.log('Cookies accepted...');
   },
 
   login: async (username, password) => {
-    await ig.page.goto(config.INSTA_BASE_URL, { waitUntil: 'networkidle2' });
+    await igTaggedPosts.page.type('input[name="username"]', username, { delay: 100 });
+    await igTaggedPosts.page.type('input[name="password"]', password, { delay: 100 });
 
-    await ig.page.waitFor(1000);
-
-    await ig.page.type('input[name="username"]', username, { delay: 100 });
-    await ig.page.type('input[name="password"]', password, { delay: 100 });
-
-    // OLD SELECTOR:
-    // let loginButton = await ig.page.$x('//*[@id="react-root"]/section/main/article/div[2]/div[1]/div/form/div[4]/button');
-
-    let loginButton = await ig.page.$$('button[type="submit"]');
+    let loginButton = await igTaggedPosts.page.$$('button[type="submit"]');
     await loginButton[0].click();
-    await ig.page.waitForNavigation({ waitUntil: 'networkidle2' });
+    await igTaggedPosts.page.waitForNavigation({ waitUntil: 'networkidle2' });
     console.log('Logged in...');
   },
 
   gotToSubjectTaggedPage: async () => {
-    ig.page = await ig.browser.newPage();
-    await ig.page.goto(`${config.INSTA_BASE_URL}/${ig.SUBJECT}/tagged`, { waitUntil: 'networkidle2' });
+    igTaggedPosts.page = await igTaggedPosts.browser.newPage();
+    await igTaggedPosts.page.goto(`${config.INSTA_BASE_URL}/${igTaggedPosts.SUBJECT}/tagged`, { waitUntil: 'networkidle2' });
     console.log('Tagged page loaded...');
   },
 
-  findNewTaggedPosts: async () => {
-    console.log('Finding new tagged posts...');
-
-    if (!ig.mostRecentPathname) {
-      console.log('mostRecentPathname not successfully set...');
-    };
-
-    await ig.setMostRecentPathname();
+  fetchPostsUrls: async () => {
+    console.log('Fetching post urls...');
 
     let loadedPathnames = [];
     let pathnamesCollection = [];
 
     async function fetchLoadedPathnames() {
-      await ig.page.waitFor(5000);
+      await igTaggedPosts.page.waitFor(5000);
 
-      loadedPathnames = await ig.page.evaluate(() => {
+      loadedPathnames = await igTaggedPosts.page.evaluate(() => {
         const loadedPathnames = [];
         const loadedPosts = document.querySelectorAll('.v1Nh3');
         loadedPosts.forEach((element) => {
@@ -110,19 +114,15 @@ const igTaggedPosts = {
     };
 
     async function checkLoadedPathnames() {
-      // const mostRecentPathnameProxy = '/p/CANTfhiFO6S/';
-
-      // If mostRecentPathname is loaded and we reach end of scraping cycle
-      if(loadedPathnames.includes(ig.mostRecentPathname) || pathnamesCollection.length >= 250) {
-        loadedPathnames = loadedPathnames.slice(0, loadedPathnames.indexOf(ig.mostRecentPathname));
-        addLoadedPathnamesToCollection();
-        console.log(`Number of new tagged posts: ${pathnamesCollection.length}`);
-        ig.newPathnames = pathnamesCollection;
-        await ig.page.close();
-      } else {
+      if (pathnamesCollection.length <= config.POSTS_COUNT) {
         addLoadedPathnamesToCollection();
         await scrollDown();
         await fetchLoadedPathnames();
+      } else {
+        addLoadedPathnamesToCollection();
+        console.log(`Number of posts waiting to be posted: ${pathnamesCollection.length}`);
+        igTaggedPosts.newPathnames = pathnamesCollection;
+        await igTaggedPosts.page.close();
       }
     };
 
@@ -136,17 +136,17 @@ const igTaggedPosts = {
     await fetchLoadedPathnames();
   },
 
-  createNewTaggedPosts: async () => {
-    if (ig.newPathnames.length > 0) {
+  sendTaggedPosts: async () => {
+    if (igTaggedPosts.newPathnames.length > 0) {
       console.log('Creating new tagged posts...');
     }
-    if (ig.newPathnames.length === 0) {
+    if (igTaggedPosts.newPathnames.length === 0) {
       console.log('No new tagged posts to be created...');
     }
-    const newPathnamesCopy = ig.newPathnames.slice().reverse();
+    const newPathnamesCopy = igTaggedPosts.newPathnames.slice().reverse();
 
     for (const newPathname of newPathnamesCopy) {
-      const page = await ig.browser.newPage();
+      const page = await igTaggedPosts.browser.newPage();
       await page.goto(`${config.INSTA_BASE_URL}${newPathname}`, { waitUntil: 'networkidle2' });
       await page.waitFor(4000);
 
@@ -158,16 +158,24 @@ const igTaggedPosts = {
         const fetchLikes = () => {
           // If image is loaded => "LIKES"
           if (imageDiv) {
-            if (document.querySelector('.Nm9Fw button span')) {
-              return document.querySelector('.Nm9Fw button span').innerText.replace(/,/g, "");
+            if (document.querySelector('.Nm9Fw a span')) {
+              return document.querySelector('.Nm9Fw a span').innerText.replace(/,/g, "");
             }
-            if (document.querySelector('.Nm9Fw button').innerText === 'like this') {
+            if (document.querySelector('.Nm9Fw a').innerText === 'like this') {
               return 0;
             }
-            // IF "Liked by Mario Testino and 1 other"
-            if (document.querySelector('.Nm9Fw button')) {
-              let number = document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
+            // If "Liked by Mario Testino and 1 other"
+            if (document.querySelector('.Nm9Fw a').innerText.match(/\d/g)) {
+              let number = document.querySelector('.Nm9Fw a').innerText.match(/\d/g).join();
               return parseInt(number) + 1;
+            }
+
+            // TODO: If likes are hidden - dig deeper...
+            if (document.querySelector('.Nm9Fw .zV_Nj')) {
+              return Math.floor(Math.random() * 2000);
+
+              // const others = document.querySelector('.Nm9Fw .zV_Nj');
+              // others.click();
             }
           }
 
@@ -188,13 +196,15 @@ const igTaggedPosts = {
           if (document.querySelector('.FFVAD')) {
             return document.querySelector('.FFVAD').srcset.split(',')[0].split(' ')[0];
           }
+          // TO DO: If image carousel?
           console.log("Problem with fetching image url...");
         }
 
         // If post still exists...
         if (imageDiv || videoDiv) {
           return {
-            author: document.querySelector('.sqdOP').innerText,
+            post_type: "tagged",
+            author: document.querySelector('.sqdOP._8A5w5.ZIAjV').innerText,
             message: document.querySelector('.C4VMK') ? document.querySelector('.C4VMK').children[1].innerHTML.replace(/"/g, "'") : "",
             posted_at: document.querySelector("._1o9PC").attributes["datetime"].value,
             pathname: window.location.pathname,
@@ -207,7 +217,8 @@ const igTaggedPosts = {
       });
 
       if (taggedPost) {
-        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}`;
+        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${igTaggedPosts.SUBJECT}`;
+
         fetch(endpoint, {
             method: 'post',
             body: JSON.stringify(taggedPost),
@@ -218,13 +229,13 @@ const igTaggedPosts = {
             serverState = data;
 
             // Delete this pathname from 'newPathnames' array in module state
-            const index = ig.newPathnames.indexOf(newPathname);
+            const index = igTaggedPosts.newPathnames.indexOf(newPathname);
             if (index > -1) {
-              ig.newPathnames.splice(index, 1);
+              igTaggedPosts.newPathnames.splice(index, 1);
             }
 
             console.log(`New tagged post created from "${newPathname}"...`);
-            console.log(`New posts still remaining: ${ig.newPathnames.length}`);
+            console.log(`New posts still remaining: ${igTaggedPosts.newPathnames.length}`);
           })
       }
       await page.close();
@@ -234,10 +245,10 @@ const igTaggedPosts = {
   updateTaggedPosts: async () => {
     console.log('Checking and updating likes of wider selection...');
     // TO DO: FETCH WIDER SELECTION FROM SERVER
-    serverState = await ig.fetchServerState();
+    serverState = await igTaggedPosts.fetchServerState();
 
     for (const taggedPost of serverState) {
-      const page = await ig.browser.newPage();
+      const page = await igTaggedPosts.browser.newPage();
       await page.goto(`${config.INSTA_BASE_URL}${taggedPost.pathname}`, { waitUntil: 'networkidle2' });
       await page.waitFor(2000);
 
@@ -266,6 +277,14 @@ const igTaggedPosts = {
             if (document.querySelector('.Nm9Fw button')) {
               let number = document.querySelector('.Nm9Fw button').innerText.match(/\d/g).join();
               return (parseInt(number) + 1);
+            }
+
+            // TODO: If likes are hidden - dig deeper...
+            if (document.querySelector('.Nm9Fw .zV_Nj')) {
+              return Math.floor(Math.random() * 2000);
+
+              // const others = document.querySelector('.Nm9Fw .zV_Nj');
+              // others.click();
             }
           }
 
@@ -297,7 +316,7 @@ const igTaggedPosts = {
       }
 
       if (body.status === 'deleted') {
-        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${ig.SUBJECT}/?pathname=${body.pathname}`;
+        const endpoint = `${config.API_BASE_URL}/api/v1/tagged_posts/${igTaggedPosts.SUBJECT}/?pathname=${body.pathname}`;
         serverState = await fetch(endpoint, {
             method: 'delete',
             headers: { 'Content-Type': 'application/json' }
@@ -313,7 +332,7 @@ const igTaggedPosts = {
 
 // PRIVATE HELPER FUNCTIONS
 const scrollDown = async () => {
-  await ig.page.evaluate(() => {
+  await igTaggedPosts.page.evaluate(() => {
     const randomNumber = Math.random() * 3;
     window.scrollBy(0, window.innerHeight * randomNumber);
   });
