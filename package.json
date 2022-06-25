@@ -9,7 +9,7 @@
   "private": true,
   "dependencies": {
     "dotenv": "^8.2.0",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.7",
     "node-inspect": "^1.11.6",
     "puppeteer": "^2.1.1"
   }
